@@ -10,7 +10,7 @@ from typing import Any, List, Optional, Union
 from ..common.io import load_config, open_read_text, open_write_text
 from ..common.parallel import pmap
 from ..common.typing import DictStrAny
-from .typing import (
+from .scalabel_typing import (
     RLE,
     Box2D,
     Box3D,

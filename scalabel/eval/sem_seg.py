@@ -19,7 +19,7 @@ from scalabel.common.parallel import NPROC
 from scalabel.common.typing import NDArrayF64, NDArrayI32, NDArrayU8
 from scalabel.label.io import load, load_label_config
 from scalabel.label.transforms import poly2ds_to_mask, rle_to_mask
-from scalabel.label.typing import Config, Frame, ImageSize
+from scalabel.scalabel.label.scalabel_typing import Config, Frame, ImageSize
 from scalabel.label.utils import get_leaf_categories
 
 from .result import AVERAGE, Result, Scores, ScoresList

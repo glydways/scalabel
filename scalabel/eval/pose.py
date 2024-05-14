@@ -21,7 +21,7 @@ from ..common.typing import DictStrAny, NDArrayF64
 from ..label.coco_typing import GtType
 from ..label.io import load, load_label_config
 from ..label.to_coco import scalabel2coco_pose
-from ..label.typing import Config, Frame
+from ..label.scalabel_typing import Config, Frame
 from .result import OVERALL, Result
 from .utils import reorder_preds
 

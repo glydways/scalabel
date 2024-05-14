@@ -7,7 +7,7 @@ from typing import Dict, List, Tuple, Union
 import numpy as np
 
 from ..common.typing import NDArrayF64
-from ..label.typing import Box3D
+from ..label.scalabel_typing import Box3D
 
 
 def rotate_vector(

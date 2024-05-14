@@ -12,7 +12,7 @@ from ..common.parallel import NPROC, pmap
 from ..common.typing import DictStrAny, NDArrayF64
 from ..label.transforms import xyxy_to_box2d
 from .io import save
-from .typing import (
+from .scalabel_typing import (
     Box3D,
     Category,
     Config,

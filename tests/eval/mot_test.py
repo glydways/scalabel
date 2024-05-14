@@ -7,7 +7,7 @@ import pytest
 
 from scalabel.common.typing import NDArrayF64
 from scalabel.label.io import group_and_sort, load, load_label_config
-from scalabel.label.typing import Category
+from scalabel.scalabel.label.scalabel_typing import Category
 from tests.util import get_test_file
 from scalabel.eval.mot import acc_single_video_mot, compute_average, evaluate_track
 

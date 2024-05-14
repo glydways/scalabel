@@ -11,7 +11,7 @@ from pycocotools import mask as mask_utils
 
 from ..common.typing import NDArrayU8
 from .coco_typing import CatType, PolygonType, RLEType
-from .typing import RLE, Box2D, Config, Edge, Graph, ImageSize, Node, Poly2D
+from .scalabel_typing import RLE, Box2D, Config, Edge, Graph, ImageSize, Node, Poly2D
 from .utils import get_leaf_categories
 
 __all__ = [
