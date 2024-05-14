@@ -16,7 +16,7 @@ from ..label.transforms import xyxy_to_box2d
 from ..label.utils import cart2hom, rotation_y_to_alpha
 from .io import save
 from .kitti_utlis import KittiPoseParser, list_from_file, read_calib, read_oxts
-from .typing import (
+from .styping import (
     Box3D,
     Category,
     Config,
@@ -33,6 +33,9 @@ from .utils import (
     get_extrinsics_from_matrix,
     get_matrix_from_extrinsics,
 )
+import numpy as np
+import struct
+from open3d import *
 
 kitti_cats = {
     "Pedestrian": "pedestrian",
@@ -82,6 +85,21 @@ def parse_arguments() -> argparse.Namespace:
         help="number of processes for conversion",
     )
     return parser.parse_args()
+
+
+def convert_kitti_bin_to_ply(binFilePath):
+    size_float = 4
+    list_pcd = []
+    with open(binFilePath, "rb") as f:
+        byte = f.read(size_float * 4)
+        while byte:
+            x, y, z, intensity = struct.unpack("ffff", byte)
+            list_pcd.append([x, y, z])
+            byte = f.read(size_float * 4)
+    np_pcd = np.asarray(list_pcd)
+    pcd = open3d.geometry.PointCloud()
+    pcd.points = open3d.utility.Vector3dVector(np_pcd)
+    return pcd
 
 
 def heading_transform(box3d: Box3D, calib: NDArrayF64) -> float:
@@ -291,11 +309,16 @@ def from_kitti_det(
     velodyne_dir = osp.join(data_dir, "velodyne")
     label_dir = osp.join(data_dir, "label_2")
     calib_dir = osp.join(data_dir, "calib")
+    ply_dir = osp.join(data_dir, "ply")
 
     img_names = sorted(os.listdir(velodyne_dir))
 
     global_track_id = 0
     for frame_idx, velodyne_name in enumerate(img_names):
+        i += 1
+        if i % 50 == 0:
+            print(i, "/", len(img_names))
+
         img_name = velodyne_name.split(".")[0] + ".png"
         trackid_maps: Dict[str, int] = {}
         frame_names = []
@@ -344,18 +367,27 @@ def from_kitti_det(
                 labels=labels_cam,
             )
             frame_names.append(f"{cam}_" + img_name)
-            frames.append(f)
+            groups.append(f)
 
         full_path = osp.join(velodyne_dir, velodyne_name)
         url = data_type + full_path.split(data_type)[-1]
 
+        ply_name = osp.join(
+            ply_dir, f"{str(frame_idx).zfill(6)}.ply", 
+        )
+
+        open3d.io.write_point_cloud(
+            ply_name, convert_kitti_bin_to_ply(velodyne_name), 
+            write_ascii=False, compressed=False, print_progress=False
+        )
+
         lidar2cam_mat = np.dot(rect, velo2cam)
         lidar2cam = get_extrinsics_from_matrix(lidar2cam_mat)
 
-        groups.append(
+        frames.append(
             FrameGroup(
                 name=velodyne_name,
-                url=url,
+                url=ply_name,
                 extrinsics=lidar2cam,
                 frames=frame_names,
                 labels=parse_lidar_labels(labels, lidar2cam),
@@ -381,6 +413,7 @@ def from_kitti(
     label_dir = osp.join(data_dir, "label_02")
     calib_dir = osp.join(data_dir, "calib")
     oxt_dir = osp.join(data_dir, "oxts")
+    ply_dir = osp.join(data_dir, "ply")
 
     video_names = sorted(os.listdir(velodyne_dir))
 
@@ -416,7 +449,12 @@ def from_kitti(
                 data_type, label_file, trackid_maps, global_track_id
             )
 
+        i = 0
         for frame_idx in range(len(total_img_names["image_02"])):
+            i += 1
+            if i % 50 == 0:
+                print(i, "/", len(total_img_names["image_02"]))
+
             fields = read_oxts(oxt_dir, int(video_name))
             poses = [KittiPoseParser(fields[i]) for i in range(len(fields))]
 
@@ -465,7 +503,7 @@ def from_kitti(
                 img_name = f"{cam}_" + "_".join(img_name_list)
                 labels_cam = generate_labels_cam(labels, offset)
 
-                frame = Frame(
+                img_frame = Frame(
                     name=img_name,
                     videoName=video_name,
                     frameIndex=frame_idx,
@@ -476,10 +514,19 @@ def from_kitti(
                     labels=labels_cam,
                 )
                 frame_names.append(img_name)
-                frames.append(frame)
+                groups.append(img_frame)
 
             velodyne_name = osp.join(
                 velodyne_dir, video_name, f"{str(frame_idx).zfill(6)}.bin"
+            )
+
+            ply_name = osp.join(
+                ply_dir, video_name, f"{str(frame_idx).zfill(6)}.ply", 
+            )
+
+            open3d.io.write_point_cloud(
+                ply_name, convert_kitti_bin_to_ply(velodyne_name), 
+                write_ascii=False, compressed=False, print_progress=False
             )
 
             if not velodyne_name in velodyne_names:
@@ -501,7 +548,7 @@ def from_kitti(
                 rect, velo2cam, cam2global
             )
 
-            groups.append(
+            frames.append(
                 FrameGroup(
                     name=group_name,
                     videoName=video_name,
