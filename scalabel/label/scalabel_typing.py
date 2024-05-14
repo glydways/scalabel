@@ -78,11 +78,11 @@ class Label(BaseModel):
     score: Optional[float] = None
     attributes: Optional[Dict[str, Union[bool, int, float, str]]] = None
     category: Optional[str] = None
-    box2d: Optional[Box2D]
-    box3d: Optional[Box3D]
-    poly2d: Optional[List[Poly2D]]
-    rle: Optional[RLE]
-    graph: Optional[Graph]
+    box2d: Optional[Box2D] = None
+    box3d: Optional[Box3D] = None
+    poly2d: Optional[List[Poly2D]] = None
+    rle: Optional[RLE] = None
+    graph: Optional[Graph] = None
 
     def __init__(self, **data: Any) -> None:  # type: ignore
         """Init structure and convert the id type to string."""
@@ -107,9 +107,9 @@ class Intrinsics(BaseModel):
     center: Tuple[float, float]
     skew: float = 0
     # radial distortion parameters
-    radial: Optional[Tuple[float, float, float]]
+    radial: Optional[Tuple[float, float, float]] = None
     # tangential distortion parameters
-    tangential: Optional[Tuple[float, float]]
+    tangential: Optional[Tuple[float, float]] = None
 
 
 class Extrinsics(BaseModel):
@@ -146,9 +146,9 @@ class Category(BaseModel):
     """Define Scalabel label attributes."""
 
     name: str
-    subcategories: Optional[List["Category"]]
+    subcategories: Optional[List["Category"]] = None
     isThing: Optional[bool] = None  # for panoptic segmentation
-    color: Optional[Tuple[float, float, float]]
+    color: Optional[Tuple[float, float, float]] = None
 
 
 Category.update_forward_refs()
@@ -159,20 +159,20 @@ class Attribute(BaseModel):
 
     name: str
     type: str
-    tag: Optional[str]
-    tagPrefix: Optional[str]
-    tagSuffixes: Optional[List[str]]
-    values: Optional[List[str]]
+    tag: Optional[str] = None 
+    tagPrefix: Optional[str] = None
+    tagSuffixes: Optional[List[str]] = None
+    values: Optional[List[str]] = None
 
 
 class Config(BaseModel):
     """Define metadata of the dataset."""
 
-    # optional image size info to make memory pre-allocation possible
-    imageSize: Optional[ImageSize]
-    attributes: Optional[List[Attribute]]
     categories: List[Category]
-    poseSigmas: Optional[List[float]]
+    # optional image size info to make memory pre-allocation possible
+    imageSize: Optional[ImageSize] = None
+    attributes: Optional[List[Attribute]] = None
+    poseSigmas: Optional[List[float]] = None
 
 
 class FrameGroup(Frame):
@@ -185,5 +185,5 @@ class Dataset(BaseModel):
     """Define dataset components."""
 
     frames: List[Frame]
-    groups: Optional[List[FrameGroup]]
-    config: Optional[Config]
+    groups: Optional[List[FrameGroup]] = None
+    config: Optional[Config] = None
