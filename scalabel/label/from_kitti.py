@@ -16,7 +16,7 @@ from ..label.transforms import xyxy_to_box2d
 from ..label.utils import cart2hom, rotation_y_to_alpha
 from .io import save
 from .kitti_utlis import KittiPoseParser, list_from_file, read_calib, read_oxts
-from .styping import (
+from .scalabel_typing import (
     Box3D,
     Category,
     Config,
@@ -74,7 +74,7 @@ def parse_arguments() -> argparse.Namespace:
     )
     parser.add_argument(
         "--data-type",
-        default="tracking",
+        default="detection",
         choices=["tracking", "detection"],
         help="type of kitti dataset",
     )
@@ -311,13 +311,17 @@ def from_kitti_det(
     calib_dir = osp.join(data_dir, "calib")
     ply_dir = osp.join(data_dir, "ply")
 
+    if not osp.exists(ply_dir):
+        os.makedirs(ply_dir)
+
     img_names = sorted(os.listdir(velodyne_dir))
 
     global_track_id = 0
+    i = 0
     for frame_idx, velodyne_name in enumerate(img_names):
         i += 1
         if i % 50 == 0:
-            print(i, "/", len(img_names))
+            print("Progress: ", i, "/", len(img_names))
 
         img_name = velodyne_name.split(".")[0] + ".png"
         trackid_maps: Dict[str, int] = {}
@@ -358,13 +362,14 @@ def from_kitti_det(
             full_path = osp.join(img_dir, img_name)
             url = data_type + full_path.split(data_type)[-1]
 
-            f = Frame(
+            f = FrameGroup(
                 name=f"{cam}_" + img_name,
                 frameIndex=frame_idx,
-                url=url,
+                url=osp.join("items", url),
                 size=image_size,
                 intrinsics=intrinsics,
                 labels=labels_cam,
+                frames=[]
             )
             frame_names.append(f"{cam}_" + img_name)
             groups.append(f)
@@ -376,10 +381,11 @@ def from_kitti_det(
             ply_dir, f"{str(frame_idx).zfill(6)}.ply", 
         )
 
-        open3d.io.write_point_cloud(
-            ply_name, convert_kitti_bin_to_ply(velodyne_name), 
-            write_ascii=False, compressed=False, print_progress=False
-        )
+        if not osp.exists(ply_name):
+            open3d.io.write_point_cloud(
+                ply_name, convert_kitti_bin_to_ply(full_path), 
+                write_ascii=False, compressed=False, print_progress=False
+            )
 
         lidar2cam_mat = np.dot(rect, velo2cam)
         lidar2cam = get_extrinsics_from_matrix(lidar2cam_mat)
@@ -387,7 +393,7 @@ def from_kitti_det(
         frames.append(
             FrameGroup(
                 name=velodyne_name,
-                url=ply_name,
+                url=osp.join("items", ply_name),
                 extrinsics=lidar2cam,
                 frames=frame_names,
                 labels=parse_lidar_labels(labels, lidar2cam),
