@@ -1,3 +1,72 @@
+### Visualizing KITTI formatted labels and point cloud to Scalabel with ext-Complex-YOLOv4-Pytorch repo
+
+## Step 1. Setup Docker 
+Follow the instructions in `glyd/ext-Complex-YOLOv4-Pytorch` repo to setup a docker, and launch the docker
+
+## Step 2. Prepare the Data 
+For your Yolo repo to function properly with default settings, the folder `kitti` is located at the root of `~/ext-Complex-YOLOv4-Pytorch/dataset`, please make sure the following content exists:
+```
+kitti
+├── ImageSets
+│   ├── test.txt
+│   ├── train.txt
+│   └── val.txt
+└── training
+    ├── calib  # calib files in this directory must exist
+    ├── label_2  # label files in this directory must exist
+    └── velodyne  # velodyne files in this directory must exist
+```
+
+However, scalabel somehow can only read data from `~/ext-Complex-YOLOv4-Pytorch/items`, therefore, there are symbolic links in this repository to make it work.  
+
+## Step 3. Convert the Data to Scalabel format:
+Launch the `cyolo4:latest` docker, and run the following command inside it:
+`python -m scalabel.label.from_kitti --input-dir dataset/kitti --output-dir dataset/kitti --split training --data-type detection --nproc 18`
+
+## Step 4. Pull the web server docker from the web
+Outside the docker, run:
+`docker pull scalabel/www`
+
+## Step 5. (Optional) Setup alias for running the web server docker
+`echo "alias ds='docker run -it -v ~/ext-Complex-YOLOv4-Pytorch/dataset:/opt/scalabel/local-data -p 8686:8686 -p 6379:6379 scalabel/www node app/dist/main.js --config /opt/scalabel/local-data/scalabel/config.yml --max-old-space-size=8192'" >> ~/.bashrc`
+Note that if you cloned the parent repo to a different directory, change `-v ~/ext-Complex-YOLOv4-Pytorch/dataset:/opt/scalabel/local-data` to `-v <your_directory>:/opt/scalabel/local-data`.
+
+## Step 6. Launch the docker
+If you have completed Step 5:
+`ds`
+
+Otherwise:
+`docker run -it -v ~/ext-Complex-YOLOv4-Pytorch/dataset:/opt/scalabel/local-data -p 8686:8686 -p 6379:6379 scalabel/www node app/dist/main.js --config /opt/scalabel/local-data/scalabel/config.yml --max-old-space-size=8192`
+
+Note that if you cloned the parent repo to a different directory, change `-v ~/ext-Complex-YOLOv4-Pytorch/dataset:/opt/scalabel/local-data` to `-v <your_directory>:/opt/scalabel/local-data`.
+
+
+## Step 7. Open Scalabel Web UI using a browser
+Go to: `http://127.0.0.1:8686/create`
+
+## Step 8. Create a dataset
+Item Type: Point Cloud
+
+Label Type: 3D Bounding Box
+
+Check "Submit single file"
+
+For Dataset, select the file we generated in Step 3, which should be at `~/ext-Complex-YOLOv4-Pytorch/dataset/kitti/detection_training.json`.
+Set tasksize to something reasonable, (say 25).  
+
+Warning: If task is too small, say 1, it would take a very long time for it to pre-process and you may have to kill the web sever, then delete dataset/items/<project_name>, and restart.
+
+## Step 9. Launch visualizer
+Click "Launch Dashboard" then select a row and click on the icon on column "Task Link". 
+
+To view the keyboard controls for the visualizer go here:
+<a href="https://github.com/glydways/scalabel/blob/master/doc/src/keyboard.rst">https://github.com/glydways/scalabel/blob/master/doc/src/keyboard.rst</a>
+Refer to "Point Cloud Bounding Box" Section
+
+
+
+
+
 ### NOTE
 
 We released a new platform for visual learning from human feedback, called [nutsh](https://github.com/SysCV/nutsh). It is in active development and it covers most of the functionalies of Scalabel with many more features.
