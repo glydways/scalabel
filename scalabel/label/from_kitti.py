@@ -318,6 +318,10 @@ def from_kitti_det(
 
     global_track_id = 0
     i = 0
+
+
+    rect = None
+
     for frame_idx, velodyne_name in enumerate(img_names):
         i += 1
         if i % 50 == 0:
@@ -326,53 +330,62 @@ def from_kitti_det(
         img_name = velodyne_name.split(".")[0] + ".png"
         trackid_maps: Dict[str, int] = {}
         frame_names = []
-
-        projections, rect, velo2cam, left_to_right_offset = read_calib(
-            calib_dir, int(img_name.split(".")[0]), mode="detection"
-        )
-
-        for cam in ["image_2", "image_3"]:
-            img_dir = osp.join(data_dir, cam)
-            with Image.open(osp.join(img_dir, img_name)) as img:
-                width, height = img.size
-                image_size = ImageSize(height=height, width=width)
-
-            offset = 0.0
-            if cam == "image_3":
-                offset = left_to_right_offset
-
-            intrinsics = Intrinsics(
-                focal=(projections[cam][0][0], projections[cam][1][1]),
-                center=(projections[cam][0][2], projections[cam][1][2]),
+        
+        if not osp.exists(calib_dir):
+            print("Warning: Calibration folder not found, assuming Idenity.  If you are using Glydcar dataset, " + \
+                "this is ok.  If you are using KITTI dataset, please download the calibration files from the " + \
+                "KITTI website.")
+        else:
+            projections, rect, velo2cam, left_to_right_offset = read_calib(
+                calib_dir, int(img_name.split(".")[0]), mode="detection"
             )
 
-            if osp.exists(label_dir):
-                label_file = osp.join(
-                    label_dir, f"{img_name.split('.')[0]}.txt"
+            for cam in ["image_2", "image_3"]:
+                img_dir = osp.join(data_dir, cam)
+
+                if not osp.exists(img_dir):
+                    continue
+                with Image.open(osp.join(img_dir, img_name)) as img:
+                    width, height = img.size
+                    image_size = ImageSize(height=height, width=width)
+
+                offset = 0.0
+                if cam == "image_3":
+                    offset = left_to_right_offset
+
+                intrinsics = Intrinsics(
+                    focal=(projections[cam][0][0], projections[cam][1][1]),
+                    center=(projections[cam][0][2], projections[cam][1][2]),
                 )
-                labels_dict, _, _ = parse_label(
-                    data_type, label_file, trackid_maps, global_track_id
+
+                labels_cam = generate_labels_cam(labels, offset)
+
+                full_path = osp.join(img_dir, img_name)
+                url = data_type + full_path.split(data_type)[-1]
+
+                f = FrameGroup(
+                    name=f"{cam}_" + img_name,
+                    frameIndex=frame_idx,
+                    url=osp.join("items", url),
+                    size=image_size,
+                    intrinsics=intrinsics,
+                    labels=labels_cam,
+                    frames=[]
                 )
-                labels = labels_dict[0]
-            else:
-                labels = []
+                frame_names.append(f"{cam}_" + img_name)
+                groups.append(f)
 
-            labels_cam = generate_labels_cam(labels, offset)
 
-            full_path = osp.join(img_dir, img_name)
-            url = data_type + full_path.split(data_type)[-1]
-
-            f = FrameGroup(
-                name=f"{cam}_" + img_name,
-                frameIndex=frame_idx,
-                url=osp.join("items", url),
-                size=image_size,
-                intrinsics=intrinsics,
-                labels=labels_cam,
-                frames=[]
+        if osp.exists(label_dir):
+            label_file = osp.join(
+                label_dir, f"{str(frame_idx).zfill(6)}.txt"
             )
-            frame_names.append(f"{cam}_" + img_name)
-            groups.append(f)
+            labels_dict, _, _ = parse_label(
+                data_type, label_file, trackid_maps, global_track_id
+            )
+            labels = labels_dict[0]
+        else:
+            labels = []
 
         full_path = osp.join(velodyne_dir, velodyne_name)
         url = data_type + full_path.split(data_type)[-1]
@@ -387,9 +400,13 @@ def from_kitti_det(
                 write_ascii=False, compressed=False, print_progress=False
             )
 
-        lidar2cam_mat = np.dot(rect, velo2cam)
-        lidar2cam = get_extrinsics_from_matrix(lidar2cam_mat)
+        if rect is not None:
+            lidar2cam_mat = np.dot(rect, velo2cam)
+        else:
+            lidar2cam = get_extrinsics_from_matrix(np.eye(4))
 
+        lidar2cam = get_extrinsics_from_matrix(lidar2cam_mat)
+        
         frames.append(
             FrameGroup(
                 name=velodyne_name,
