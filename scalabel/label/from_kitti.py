@@ -47,10 +47,11 @@ kitti_cats = {
     "Person": "pedestrian",
     "Person_sitting": "pedestrian",
     "Misc": "misc",
+    "Glydcar": "glydcar",
     "DontCare": "dontcare",
 }
 
-kitti_used_cats = ["pedestrian", "cyclist", "car", "truck", "tram", "misc"]
+kitti_used_cats = ["pedestrian", "cyclist", "car", "truck", "tram", "glydcar", "misc"]
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -173,6 +174,7 @@ def parse_label(
     label_file: str,
     trackid_maps: Dict[str, int],
     global_track_id: int,
+    glydway_datset: bool
 ) -> Tuple[Dict[int, List[Label]], Dict[str, int], int]:
     """Function parsing tracking / detection labels."""
     if data_type == "tracking":
@@ -218,7 +220,10 @@ def parse_label(
             float(label[7 + offset]),
         )
 
-        y_cen_adjust = float(label[8 + offset]) / 2.0
+        if not glydway_datset:
+            y_cen_adjust = float(label[8 + offset]) / 2.0
+        else:
+            y_cen_adjust = 0.0
 
         box3d = Box3D(
             orientation=(0.0, float(label[14 + offset]), 0.0),
@@ -319,8 +324,8 @@ def from_kitti_det(
     global_track_id = 0
     i = 0
 
-
     rect = None
+    glydway_dataset = False
 
     for frame_idx, velodyne_name in enumerate(img_names):
         i += 1
@@ -331,11 +336,33 @@ def from_kitti_det(
         trackid_maps: Dict[str, int] = {}
         frame_names = []
         
-        if not osp.exists(calib_dir):
-            print("Warning: Calibration folder not found, assuming Idenity.  If you are using Glydcar dataset, " + \
-                "this is ok.  If you are using KITTI dataset, please download the calibration files from the " + \
-                "KITTI website.")
+        if not osp.exists(calib_dir) :
+            if not glydway_dataset:
+                print("Warning: Calibration folder not found, assuming Idenity.  If you are using Glydcar dataset, " + \
+                    "this is ok.  If you are using KITTI dataset, please download the calibration files from the " + \
+                    "KITTI website.")
+            glydway_dataset = True
         else:
+            glydway_dataset = False
+            
+
+        if osp.exists(label_dir):
+            label_file = osp.join(
+                label_dir, f"{str(frame_idx).zfill(6)}.txt"
+            )
+            labels_dict, _, _ = parse_label(
+                data_type, 
+                label_file, 
+                trackid_maps, 
+                global_track_id, 
+                glydway_dataset
+            )
+            labels = labels_dict[0]
+        else:
+            labels = []
+        
+        
+        if not glydway_dataset:
             projections, rect, velo2cam, left_to_right_offset = read_calib(
                 calib_dir, int(img_name.split(".")[0]), mode="detection"
             )
@@ -376,24 +403,13 @@ def from_kitti_det(
                 groups.append(f)
 
 
-        if osp.exists(label_dir):
-            label_file = osp.join(
-                label_dir, f"{str(frame_idx).zfill(6)}.txt"
-            )
-            labels_dict, _, _ = parse_label(
-                data_type, label_file, trackid_maps, global_track_id
-            )
-            labels = labels_dict[0]
-        else:
-            labels = []
-
         full_path = osp.join(velodyne_dir, velodyne_name)
         url = data_type + full_path.split(data_type)[-1]
 
         ply_name = osp.join(
             ply_dir, f"{str(frame_idx).zfill(6)}.ply", 
         )
-
+        # print(full_path)
         if not osp.exists(ply_name):
             open3d.io.write_point_cloud(
                 ply_name, convert_kitti_bin_to_ply(full_path), 
@@ -402,10 +418,9 @@ def from_kitti_det(
 
         if rect is not None:
             lidar2cam_mat = np.dot(rect, velo2cam)
+            lidar2cam = get_extrinsics_from_matrix(lidar2cam_mat)
         else:
             lidar2cam = get_extrinsics_from_matrix(np.eye(4))
-
-        lidar2cam = get_extrinsics_from_matrix(lidar2cam_mat)
         
         frames.append(
             FrameGroup(
