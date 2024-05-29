@@ -60,12 +60,20 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--input-dir",
         "-i",
+        default=None,
         help="path to the input coco label file",
     )
     parser.add_argument(
         "--output-dir",
         "-o",
+        default=None,
         help="path to save scalabel format label file",
+    )
+    parser.add_argument(
+        "--dir",
+        "-d",
+        default=None,
+        help="same path to save and load the labels",
     )
     parser.add_argument(
         "--split",
@@ -135,10 +143,15 @@ def parse_lidar_labels(
             center_lidar: Tuple[float, float, float] = tuple(  # type: ignore
                 np.dot(cam2lidar_mat, cart2hom(center).T)[:3, 0].tolist()
             )
-            heading = heading_transform(box3d, cam2lidar_mat)
+            if abs(cam2lidar_mat - np.eye(4)).sum() > 1e-6:
+                heading = heading_transform(box3d, cam2lidar_mat)
+                orientation = (0.0, heading, 0.0)
+            else:
+                heading = box3d.orientation[1]
+                orientation = (0.0, 0.0, box3d.orientation[1])
 
             new_box3d = Box3D(
-                orientation=(0.0, heading, 0.0),
+                orientation=orientation,
                 location=center_lidar,
                 dimension=box3d.dimension,
                 alpha=rotation_y_to_alpha(heading, center_lidar),
@@ -605,6 +618,10 @@ def from_kitti(
 
 def run(args: argparse.Namespace) -> None:
     """Run conversion with command line arguments."""
+    if args.dir is not None:
+        args.input_dir = args.dir
+        args.output_dir = args.dir
+
     if not osp.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
