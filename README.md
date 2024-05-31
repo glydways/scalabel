@@ -21,7 +21,7 @@ However, scalabel somehow can only read data from `~/ext-Complex-YOLOv4-Pytorch/
 
 ## Step 3. Convert the Data to Scalabel format:
 Launch the `cyolo4:latest` docker, and run the following command inside it:
-`python -m scalabel.label.from_kitti --input-dir dataset/kitti --output-dir dataset/kitti --split training --data-type detection --nproc 18`
+`python -m scalabel.label.from_kitti --split training --data-type detection --nproc 18 --dir dataset/kitti`
 
 ## Step 4. Pull the web server docker from the web
 Outside the docker, run:
@@ -52,7 +52,7 @@ Label Type: 3D Bounding Box
 Check "Submit single file"
 
 For Dataset, select the file we generated in Step 3, which should be at `~/ext-Complex-YOLOv4-Pytorch/dataset/kitti/detection_training.json`.
-Set tasksize to something reasonable, (say 25).  
+Set tasksize to something reasonable, (say 100).  
 
 Warning: If task is too small, say 1, it would take a very long time for it to pre-process and you may have to kill the web sever, then delete dataset/items/<project_name>, and restart.
 
