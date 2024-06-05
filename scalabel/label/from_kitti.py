@@ -201,8 +201,9 @@ def parse_label(
     track_id = -1
 
     for label_line in labels:
+        if label_line == "":
+            continue
         label = label_line.split()
-
         if data_type == "tracking":
             seq_id = int(label[0])
         else:
@@ -370,7 +371,10 @@ def from_kitti_det(
                 global_track_id, 
                 glydway_dataset
             )
-            labels = labels_dict[0]
+            if len(labels_dict) > 0:
+                labels = labels_dict[0]
+            else:
+                labels = []
         else:
             labels = []
         
