@@ -79,6 +79,49 @@ def parse_arguments() -> argparse.Namespace:
         default=NPROC,
         help="number of processes for conversion",
     )
+    parser.add_argument(
+        "--name",
+        default="Glydcar",
+        choices=['Glydcar'],
+        help="Object class for visualization",
+    )
+    parser.add_argument(
+        "--eval-type",
+        default='3d',
+        choices=['3d', 'bev'],
+        help="The metric that samples are evalauated based on that.",
+    )
+    parser.add_argument(
+        "--difficulty",
+        default='Easy',
+        choices=['Easy', 'Moderate', 'Difficult'],
+        help="Class difficulty",
+    )
+    parser.add_argument(
+        "--iou",
+        type=float,
+        default=0.01,
+        choices=[0.01, 0.5],
+        help="IoU to estimate how the predicted bboxes matches truth data",
+    )
+
+    parser.add_argument(
+        "--metric",
+        default="FN",
+        choices=["TP", "FP", "FN", "max_aos"],
+        help="Sorting criteria beased on the number of TP(True Positive), FP(False Positive), FN(False Negative), and max_aos(maximum orientation error)"
+    )
+    parser.add_argument(
+        "--order",
+        default="DESC",
+        choices=["ASC","DESC"],
+        help="Sorting order, descending(DESC) or ascending(ASC)"
+    )
+    parser.add_argument(
+        "--limit-num",
+        default=100,
+        help="Number of samples to visualize"
+    )
     return parser.parse_args()
 
 
@@ -306,18 +349,48 @@ def find_nearest_lidar_frame(
 
     return velodyne_name
 
+def get_and_sort_labels_of_interests(
+    labels:list,
+    class_name:str,
+    eval_type:str,
+    class_difficulty:str,
+    iou:float,
+    metric:str,
+    order:str
+) -> list:
+    """Function to sort the labels based on a criteria defined by class_difficulty, IoU and the number of FP, TP and FN"""
+
+    class_name_map = {"Glydcar": 0}
+    class_difficulty_map = {"Easy":0, "Moderate":1, "Difficult":2}
+    criteria = (class_name_map[class_name], class_difficulty_map[class_difficulty], str(iou))
+    desc = True if order == 'DESC' else False
+
+    if eval_type == 'bev':
+        labels.sort(key=lambda x: x['pred_instances_3d']['status_bev'][criteria][metric], reverse=desc)
+    else:
+        labels.sort(key=lambda x: x['pred_instances_3d']['status_3d'][criteria][metric], reverse=desc)
+    
+    return labels
+
 
 def from_mmpkl_det(
     input_dir: str,
     data_dir: str,
     samples_list: str,
     data_type: str,
+    class_name:str,
+    eval_type:str,
+    class_difficulty:str,
+    iou:float,
+    metric:str,
+    order:str,
+    limit_num:int
 ) -> Dataset:
     """Function converting Glyd MMDetection pkl data to Scalabel format."""
     frames, groups = [], []
 
     velodyne_dir = osp.join(data_dir, "velodyne")
-    label_file_pkl = osp.join(data_dir, "pred_instances_3d.pkl")
+    label_file_pkl = osp.join(data_dir, "pred_instances_3d_for_vis.pkl")
     print("label_file_pkl:", label_file_pkl)
     calib_dir = osp.join(data_dir, "calib")
     ply_dir = osp.join(data_dir, "ply")
@@ -366,9 +439,10 @@ def from_mmpkl_det(
 
         if labels_list:
             label = [item for item in labels_list if item['kitti_format_pred']['name'].size !=0 and (item['kitti_format_pred']['lidar_path']).split(".")[0] == velodyne_name]
+            sorted_labels = get_and_sort_labels_of_interests(label, class_name, eval_type, class_difficulty, iou, metric, order)
             labels_dict, _, _ = parse_label(
                 data_type, 
-                label, 
+                sorted_labels, 
                 trackid_maps, 
                 global_track_id, 
                 glydway_dataset
@@ -452,7 +526,7 @@ def from_mmpkl_det(
         )
 
     cfg = Config(categories=[Category(name=n, subcategories=None,isThing=None,color=None) for n in kitti_used_cats], imageSize=None, attributes=None, poseSigmas=None)
-    dataset = Dataset(frames=frames, groups=groups, config=cfg)
+    dataset = Dataset(frames=frames[:limit_num], groups=groups, config=cfg)
     return dataset
 
 
@@ -461,10 +535,17 @@ def from_mmpkl(
     data_dir: str,
     samples_list:str,
     data_type: str,
+    class_name:str,
+    eval_type:str,
+    class_difficulty:str,
+    iou:float,
+    metric:str,
+    order:str,
+    limit_num:int
 ) -> Dataset:
     """Function converting Glyd MMDetection pkl data to Scalabel format."""
     if data_type == "detection":
-        return from_mmpkl_det(input_dir, data_dir, samples_list, data_type)
+        return from_mmpkl_det(input_dir, data_dir, samples_list, data_type, class_name, eval_type, class_difficulty,iou, metric, order, limit_num)
 
     frames, groups = [], []
 
@@ -633,7 +714,7 @@ def run(args: argparse.Namespace) -> None:
     if not osp.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
-    output_name = f"{args.data_type}_{args.split}.json"
+    output_name = f"{args.data_type}_{args.split}_{args.name}_{args.eval_type}_{args.difficulty}_{args.iou}_{args.metric}_{args.order}.json"
 
     data_dir = osp.join(args.input_dir, args.split)
 
@@ -642,8 +723,8 @@ def run(args: argparse.Namespace) -> None:
         data_dir,
         args.samples_list,
         data_type=args.data_type,
-    )
-
+        class_name=args.name, eval_type=args.eval_type, class_difficulty=args.difficulty, iou=args.iou, metric=args.metric, order=args.order, limit_num=args.limit_num)
+    
     save(osp.join(args.output_dir, output_name), scalabel)
 
 
