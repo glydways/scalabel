@@ -7,7 +7,7 @@ from typing import List
 from ..common.typing import DictStrAny
 from ..label.transforms import bbox_to_box2d
 from .io import save
-from .typing import Category, Config, Dataset, Frame, Label
+from .scalabel_typing import Category, Config, Dataset, Frame, Label
 
 
 def parse_arguments() -> argparse.Namespace:

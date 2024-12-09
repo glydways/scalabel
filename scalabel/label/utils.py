@@ -6,7 +6,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 
 from ..common.typing import NDArrayF64
-from .typing import Category, Extrinsics, Intrinsics, Label
+from .scalabel_typing import Category, Extrinsics, Intrinsics, Label
 
 
 def get_intrinsics_from_matrix(matrix: NDArrayF64) -> Intrinsics:

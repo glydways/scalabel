@@ -24,7 +24,7 @@ from .transforms import (
     poly2ds_to_mask,
     poly2ds_to_polygon,
 )
-from .typing import RLE, Config, Frame, Graph, ImageSize, Label, Poly2D
+from .scalabel_typing import RLE, Config, Frame, Graph, ImageSize, Label, Poly2D
 from .utils import check_crowd, check_ignored, get_leaf_categories
 
 # 0 is for category that is not in the config.

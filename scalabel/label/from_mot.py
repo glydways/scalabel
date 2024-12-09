@@ -7,7 +7,7 @@ from typing import Dict, List, Tuple, Union
 from ..common.io import load_file_as_list
 from ..label.transforms import bbox_to_box2d
 from .io import save
-from .typing import Category, Config, Dataset, Frame, Label
+from .scalabel_typing import Category, Config, Dataset, Frame, Label
 
 # Classes in MOT:
 #   1: 'pedestrian'

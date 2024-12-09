@@ -6,7 +6,7 @@ import unittest
 import numpy as np
 from pydantic import parse_obj_as
 from scalabel.common.io import open_read_text
-from scalabel.label.typing import ImageSize, Poly2D
+from scalabel.scalabel.label.scalabel_typing import ImageSize, Poly2D
 
 from tests.util import get_test_file
 from scalabel.label.coco_typing import AnnType

@@ -12,7 +12,7 @@ from ..common.tqdm import tqdm
 from .coco_typing import AnnType, GtType, ImgType
 from .io import group_and_sort, save
 from .transforms import bbox_to_box2d, coco_rle_to_rle, polygon_to_poly2ds
-from .typing import Category, Config, Dataset, Frame, ImageSize, Label
+from .scalabel_typing import Category, Config, Dataset, Frame, ImageSize, Label
 
 
 def parse_arguments() -> argparse.Namespace:

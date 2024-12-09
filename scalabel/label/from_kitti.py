@@ -16,7 +16,7 @@ from ..label.transforms import xyxy_to_box2d
 from ..label.utils import cart2hom, rotation_y_to_alpha
 from .io import save
 from .kitti_utlis import KittiPoseParser, list_from_file, read_calib, read_oxts
-from .typing import (
+from .scalabel_typing import (
     Box3D,
     Category,
     Config,
@@ -33,6 +33,9 @@ from .utils import (
     get_extrinsics_from_matrix,
     get_matrix_from_extrinsics,
 )
+import numpy as np
+import struct
+from open3d import *
 
 kitti_cats = {
     "Pedestrian": "pedestrian",
@@ -44,10 +47,11 @@ kitti_cats = {
     "Person": "pedestrian",
     "Person_sitting": "pedestrian",
     "Misc": "misc",
+    "Glydcar": "glydcar",
     "DontCare": "dontcare",
 }
 
-kitti_used_cats = ["pedestrian", "cyclist", "car", "truck", "tram", "misc"]
+kitti_used_cats = ["pedestrian", "cyclist", "car", "truck", "tram", "glydcar", "misc"]
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -56,12 +60,20 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--input-dir",
         "-i",
+        default=None,
         help="path to the input coco label file",
     )
     parser.add_argument(
         "--output-dir",
         "-o",
+        default=None,
         help="path to save scalabel format label file",
+    )
+    parser.add_argument(
+        "--dir",
+        "-d",
+        default=None,
+        help="same path to save and load the labels",
     )
     parser.add_argument(
         "--split",
@@ -71,7 +83,7 @@ def parse_arguments() -> argparse.Namespace:
     )
     parser.add_argument(
         "--data-type",
-        default="tracking",
+        default="detection",
         choices=["tracking", "detection"],
         help="type of kitti dataset",
     )
@@ -82,6 +94,21 @@ def parse_arguments() -> argparse.Namespace:
         help="number of processes for conversion",
     )
     return parser.parse_args()
+
+
+def convert_kitti_bin_to_ply(binFilePath):
+    size_float = 4
+    list_pcd = []
+    with open(binFilePath, "rb") as f:
+        byte = f.read(size_float * 4)
+        while byte:
+            x, y, z, intensity = struct.unpack("ffff", byte)
+            list_pcd.append([x, y, z])
+            byte = f.read(size_float * 4)
+    np_pcd = np.asarray(list_pcd)
+    pcd = open3d.geometry.PointCloud()
+    pcd.points = open3d.utility.Vector3dVector(np_pcd)
+    return pcd
 
 
 def heading_transform(box3d: Box3D, calib: NDArrayF64) -> float:
@@ -116,10 +143,15 @@ def parse_lidar_labels(
             center_lidar: Tuple[float, float, float] = tuple(  # type: ignore
                 np.dot(cam2lidar_mat, cart2hom(center).T)[:3, 0].tolist()
             )
-            heading = heading_transform(box3d, cam2lidar_mat)
+            if abs(cam2lidar_mat - np.eye(4)).sum() > 1e-6:
+                heading = heading_transform(box3d, cam2lidar_mat)
+                orientation = (0.0, heading, 0.0)
+            else:
+                heading = box3d.orientation[1]
+                orientation = (0.0, 0.0, box3d.orientation[1])
 
             new_box3d = Box3D(
-                orientation=(0.0, heading, 0.0),
+                orientation=orientation,
                 location=center_lidar,
                 dimension=box3d.dimension,
                 alpha=rotation_y_to_alpha(heading, center_lidar),
@@ -155,6 +187,7 @@ def parse_label(
     label_file: str,
     trackid_maps: Dict[str, int],
     global_track_id: int,
+    glydway_datset: bool
 ) -> Tuple[Dict[int, List[Label]], Dict[str, int], int]:
     """Function parsing tracking / detection labels."""
     if data_type == "tracking":
@@ -168,8 +201,9 @@ def parse_label(
     track_id = -1
 
     for label_line in labels:
+        if label_line == "":
+            continue
         label = label_line.split()
-
         if data_type == "tracking":
             seq_id = int(label[0])
         else:
@@ -200,7 +234,10 @@ def parse_label(
             float(label[7 + offset]),
         )
 
-        y_cen_adjust = float(label[8 + offset]) / 2.0
+        if not glydway_datset:
+            y_cen_adjust = float(label[8 + offset]) / 2.0
+        else:
+            y_cen_adjust = 0.0
 
         box3d = Box3D(
             orientation=(0.0, float(label[14 + offset]), 0.0),
@@ -291,71 +328,121 @@ def from_kitti_det(
     velodyne_dir = osp.join(data_dir, "velodyne")
     label_dir = osp.join(data_dir, "label_2")
     calib_dir = osp.join(data_dir, "calib")
+    ply_dir = osp.join(data_dir, "ply")
+
+    if not osp.exists(ply_dir):
+        os.makedirs(ply_dir)
 
     img_names = sorted(os.listdir(velodyne_dir))
 
     global_track_id = 0
+    i = 0
+
+    rect = None
+    glydway_dataset = False
+
     for frame_idx, velodyne_name in enumerate(img_names):
+        i += 1
+        if i % 50 == 0:
+            print("Progress: ", i, "/", len(img_names))
+
         img_name = velodyne_name.split(".")[0] + ".png"
         trackid_maps: Dict[str, int] = {}
         frame_names = []
+        
+        if not osp.exists(calib_dir) :
+            if not glydway_dataset:
+                print("Warning: Calibration folder not found, assuming Idenity.  If you are using Glydcar dataset, " + \
+                    "this is ok.  If you are using KITTI dataset, please download the calibration files from the " + \
+                    "KITTI website.")
+            glydway_dataset = True
+        else:
+            glydway_dataset = False
+            
 
-        projections, rect, velo2cam, left_to_right_offset = read_calib(
-            calib_dir, int(img_name.split(".")[0]), mode="detection"
-        )
-
-        for cam in ["image_2", "image_3"]:
-            img_dir = osp.join(data_dir, cam)
-            with Image.open(osp.join(img_dir, img_name)) as img:
-                width, height = img.size
-                image_size = ImageSize(height=height, width=width)
-
-            offset = 0.0
-            if cam == "image_3":
-                offset = left_to_right_offset
-
-            intrinsics = Intrinsics(
-                focal=(projections[cam][0][0], projections[cam][1][1]),
-                center=(projections[cam][0][2], projections[cam][1][2]),
+        if osp.exists(label_dir):
+            label_file = osp.join(
+                label_dir, f"{str(frame_idx).zfill(6)}.txt"
             )
-
-            if osp.exists(label_dir):
-                label_file = osp.join(
-                    label_dir, f"{img_name.split('.')[0]}.txt"
-                )
-                labels_dict, _, _ = parse_label(
-                    data_type, label_file, trackid_maps, global_track_id
-                )
+            labels_dict, _, _ = parse_label(
+                data_type, 
+                label_file, 
+                trackid_maps, 
+                global_track_id, 
+                glydway_dataset
+            )
+            if len(labels_dict) > 0:
                 labels = labels_dict[0]
             else:
                 labels = []
-
-            labels_cam = generate_labels_cam(labels, offset)
-
-            full_path = osp.join(img_dir, img_name)
-            url = data_type + full_path.split(data_type)[-1]
-
-            f = Frame(
-                name=f"{cam}_" + img_name,
-                frameIndex=frame_idx,
-                url=url,
-                size=image_size,
-                intrinsics=intrinsics,
-                labels=labels_cam,
+        else:
+            labels = []
+        
+        
+        if not glydway_dataset:
+            projections, rect, velo2cam, left_to_right_offset = read_calib(
+                calib_dir, int(img_name.split(".")[0]), mode="detection"
             )
-            frame_names.append(f"{cam}_" + img_name)
-            frames.append(f)
+
+            for cam in ["image_2", "image_3"]:
+                img_dir = osp.join(data_dir, cam)
+
+                if not osp.exists(img_dir):
+                    continue
+                with Image.open(osp.join(img_dir, img_name)) as img:
+                    width, height = img.size
+                    image_size = ImageSize(height=height, width=width)
+
+                offset = 0.0
+                if cam == "image_3":
+                    offset = left_to_right_offset
+
+                intrinsics = Intrinsics(
+                    focal=(projections[cam][0][0], projections[cam][1][1]),
+                    center=(projections[cam][0][2], projections[cam][1][2]),
+                )
+
+                labels_cam = generate_labels_cam(labels, offset)
+
+                full_path = osp.join(img_dir, img_name)
+                url = data_type + full_path.split(data_type)[-1]
+
+                f = FrameGroup(
+                    name=f"{cam}_" + img_name,
+                    frameIndex=frame_idx,
+                    url=osp.join("items", url),
+                    size=image_size,
+                    intrinsics=intrinsics,
+                    labels=labels_cam,
+                    frames=[]
+                )
+                frame_names.append(f"{cam}_" + img_name)
+                groups.append(f)
+
 
         full_path = osp.join(velodyne_dir, velodyne_name)
         url = data_type + full_path.split(data_type)[-1]
 
-        lidar2cam_mat = np.dot(rect, velo2cam)
-        lidar2cam = get_extrinsics_from_matrix(lidar2cam_mat)
+        ply_name = osp.join(
+            ply_dir, f"{str(frame_idx).zfill(6)}.ply", 
+        )
+        # print(full_path)
+        if not osp.exists(ply_name):
+            open3d.io.write_point_cloud(
+                ply_name, convert_kitti_bin_to_ply(full_path), 
+                write_ascii=False, compressed=False, print_progress=False
+            )
 
-        groups.append(
+        if rect is not None:
+            lidar2cam_mat = np.dot(rect, velo2cam)
+            lidar2cam = get_extrinsics_from_matrix(lidar2cam_mat)
+        else:
+            lidar2cam = get_extrinsics_from_matrix(np.eye(4))
+        
+        frames.append(
             FrameGroup(
                 name=velodyne_name,
-                url=url,
+                url=osp.join("items", ply_name),
                 extrinsics=lidar2cam,
                 frames=frame_names,
                 labels=parse_lidar_labels(labels, lidar2cam),
@@ -381,6 +468,7 @@ def from_kitti(
     label_dir = osp.join(data_dir, "label_02")
     calib_dir = osp.join(data_dir, "calib")
     oxt_dir = osp.join(data_dir, "oxts")
+    ply_dir = osp.join(data_dir, "ply")
 
     video_names = sorted(os.listdir(velodyne_dir))
 
@@ -416,7 +504,12 @@ def from_kitti(
                 data_type, label_file, trackid_maps, global_track_id
             )
 
+        i = 0
         for frame_idx in range(len(total_img_names["image_02"])):
+            i += 1
+            if i % 50 == 0:
+                print(i, "/", len(total_img_names["image_02"]))
+
             fields = read_oxts(oxt_dir, int(video_name))
             poses = [KittiPoseParser(fields[i]) for i in range(len(fields))]
 
@@ -465,7 +558,7 @@ def from_kitti(
                 img_name = f"{cam}_" + "_".join(img_name_list)
                 labels_cam = generate_labels_cam(labels, offset)
 
-                frame = Frame(
+                img_frame = Frame(
                     name=img_name,
                     videoName=video_name,
                     frameIndex=frame_idx,
@@ -476,10 +569,19 @@ def from_kitti(
                     labels=labels_cam,
                 )
                 frame_names.append(img_name)
-                frames.append(frame)
+                groups.append(img_frame)
 
             velodyne_name = osp.join(
                 velodyne_dir, video_name, f"{str(frame_idx).zfill(6)}.bin"
+            )
+
+            ply_name = osp.join(
+                ply_dir, video_name, f"{str(frame_idx).zfill(6)}.ply", 
+            )
+
+            open3d.io.write_point_cloud(
+                ply_name, convert_kitti_bin_to_ply(velodyne_name), 
+                write_ascii=False, compressed=False, print_progress=False
             )
 
             if not velodyne_name in velodyne_names:
@@ -501,7 +603,7 @@ def from_kitti(
                 rect, velo2cam, cam2global
             )
 
-            groups.append(
+            frames.append(
                 FrameGroup(
                     name=group_name,
                     videoName=video_name,
@@ -520,6 +622,10 @@ def from_kitti(
 
 def run(args: argparse.Namespace) -> None:
     """Run conversion with command line arguments."""
+    if args.dir is not None:
+        args.input_dir = args.dir
+        args.output_dir = args.dir
+
     if not osp.exists(args.output_dir):
         os.makedirs(args.output_dir)
 

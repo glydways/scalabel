@@ -25,7 +25,7 @@ from scalabel.label.transforms import (
     polygon_to_poly2ds,
     rle_to_box2d,
 )
-from scalabel.label.typing import Box2D, ImageSize, Poly2D
+from scalabel.scalabel.label.scalabel_typing import Box2D, ImageSize, Poly2D
 
 SHAPE = ImageSize(height=720, width=1280)
 

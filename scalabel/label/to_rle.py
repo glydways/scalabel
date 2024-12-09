@@ -11,7 +11,7 @@ from ..common.logger import logger
 from ..common.parallel import NPROC
 from .io import group_and_sort, load, load_label_config, save
 from .transforms import frame_to_rles, rle_to_box2d
-from .typing import Config, Frame, ImageSize
+from .scalabel_typing import Config, Frame, ImageSize
 
 ToRLEsFunc = Callable[[List[Frame], str, Config, int], None]
 

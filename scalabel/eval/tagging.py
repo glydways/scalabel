@@ -20,7 +20,7 @@ from ..common.logger import logger
 from ..common.parallel import NPROC
 from ..common.typing import NDArrayF64, NDArrayI32
 from ..label.io import load, load_label_config
-from ..label.typing import Config, Frame
+from ..label.scalabel_typing import Config, Frame
 from ..label.utils import get_parent_categories
 from .result import AVERAGE, Result, Scores, ScoresList
 from .utils import reorder_preds

@@ -15,7 +15,7 @@ from scalabel.common.logger import logger
 from scalabel.common.parallel import NPROC
 from scalabel.common.typing import NDArrayU8
 from scalabel.label.io import group_and_sort, load, load_label_config
-from scalabel.label.typing import Category, Config, Frame, ImageSize
+from scalabel.scalabel.label.scalabel_typing import Category, Config, Frame, ImageSize
 from scalabel.label.utils import get_leaf_categories, get_parent_categories
 
 from .mot import (

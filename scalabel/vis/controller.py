@@ -14,7 +14,7 @@ from ..common.logger import logger
 from ..common.parallel import NPROC
 from ..common.typing import NDArrayF64, NDArrayU8
 from ..label.io import load
-from ..label.typing import Frame
+from ..label.scalabel_typing import Frame
 from .helper import fetch_image
 
 
