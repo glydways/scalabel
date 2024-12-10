@@ -55,6 +55,13 @@ def parse_arguments() -> argparse.Namespace:
         default=None,
         help="path to save and load the labels",
     )
+
+    parser.add_argument(
+        "--pkl-dir",
+        "-pd",
+        default=None,
+        help="path to labels in pkl format",
+    )
     parser.add_argument(
         "--samples-list",
         "-sl",
@@ -376,6 +383,7 @@ def get_and_sort_labels_of_interests(
 def from_mmpkl_det(
     input_dir: str,
     data_dir: str,
+    pkl_dir: str,
     samples_list: str,
     data_type: str,
     class_name:str,
@@ -390,7 +398,7 @@ def from_mmpkl_det(
     frames, groups = [], []
 
     velodyne_dir = osp.join(data_dir, "velodyne")
-    label_file_pkl = osp.join(data_dir, "pred_instances_3d_for_vis.pkl")
+    label_file_pkl = osp.join(pkl_dir, "pred_instances_3d_for_vis.pkl")
     print("label_file_pkl:", label_file_pkl)
     calib_dir = osp.join(data_dir, "calib")
     ply_dir = osp.join(data_dir, "ply")
@@ -533,6 +541,7 @@ def from_mmpkl_det(
 def from_mmpkl(
     input_dir: str,
     data_dir: str,
+    pkl_dir:str,
     samples_list:str,
     data_type: str,
     class_name:str,
@@ -545,7 +554,7 @@ def from_mmpkl(
 ) -> Dataset:
     """Function converting Glyd MMDetection pkl data to Scalabel format."""
     if data_type == "detection":
-        return from_mmpkl_det(input_dir, data_dir, samples_list, data_type, class_name, eval_type, class_difficulty,iou, metric, order, limit_num)
+        return from_mmpkl_det(input_dir, data_dir, pkl_dir, samples_list, data_type, class_name, eval_type, class_difficulty,iou, metric, order, limit_num)
 
     frames, groups = [], []
 
@@ -721,6 +730,7 @@ def run(args: argparse.Namespace) -> None:
     scalabel = from_mmpkl(
         args.input_dir,
         data_dir,
+        args.pkl_dir,
         args.samples_list,
         data_type=args.data_type,
         class_name=args.name, eval_type=args.eval_type, class_difficulty=args.difficulty, iou=args.iou, metric=args.metric, order=args.order, limit_num=args.limit_num)
