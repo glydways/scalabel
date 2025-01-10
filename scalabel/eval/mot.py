@@ -15,7 +15,7 @@ from ..common.parallel import NPROC
 from ..common.typing import NDArrayF64, NDArrayI32, NDArrayU8
 from ..label.io import group_and_sort, load, load_label_config
 from ..label.transforms import box2d_to_bbox
-from ..label.typing import Category, Config, Frame, Label
+from ..label.scalabel_typing import Category, Config, Frame, Label
 from ..label.utils import (
     check_crowd,
     check_ignored,

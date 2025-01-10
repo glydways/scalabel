@@ -41,7 +41,7 @@ from scalabel.common.io import open_write_text
 from scalabel.common.logger import logger
 from scalabel.common.parallel import NPROC
 from scalabel.label.io import load, load_label_config
-from scalabel.label.typing import Category, Config, Frame, ImageSize
+from scalabel.scalabel.label.scalabel_typing import Category, Config, Frame, ImageSize
 from scalabel.label.utils import get_leaf_categories
 
 from .result import OVERALL, Result, Scores, ScoresList

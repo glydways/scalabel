@@ -9,12 +9,12 @@ from typing import List
 from scalabel.common.parallel import NPROC
 from scalabel.eval.detect import COCOV2, COCOevalV2, DetResult, parse_arguments
 from scalabel.label.to_coco import scalabel2coco_ins_seg
-from scalabel.label.typing import Config
+from scalabel.scalabel.label.scalabel_typing import Config
 
 from ..common.io import open_write_text
 from ..common.logger import logger
 from ..label.io import load, load_label_config
-from ..label.typing import Config, Frame
+from ..label.scalabel_typing import Config, Frame
 from .utils import check_overlap, reorder_preds
 
 

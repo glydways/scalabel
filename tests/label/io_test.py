@@ -3,7 +3,7 @@ import json
 
 from tests.util import get_test_file
 from scalabel.label.io import dump, group_and_sort, load, parse
-from scalabel.label.typing import Frame
+from scalabel.scalabel.label.scalabel_typing import Frame
 
 
 def test_parse() -> None:

@@ -22,7 +22,7 @@ from ..common.typing import DictStrAny, NDArrayI32
 from ..label.coco_typing import GtType
 from ..label.io import load, load_label_config
 from ..label.to_coco import scalabel2coco_detection
-from ..label.typing import Config, Frame
+from ..label.scalabel_typing import Config, Frame
 from .result import OVERALL, Result, Scores
 from .utils import reorder_preds
 

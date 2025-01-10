@@ -34,7 +34,7 @@ except ImportError:
 
 from ..common.parallel import pmap
 from .io import save
-from .typing import (
+from .scalabel_typing import (
     Box3D,
     Category,
     Config,

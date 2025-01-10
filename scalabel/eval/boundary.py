@@ -60,7 +60,7 @@ from ..common.parallel import NPROC
 from ..common.typing import NDArrayF64, NDArrayU8
 from ..label.io import load, load_label_config
 from ..label.transforms import rle_to_mask
-from ..label.typing import Category, Config, Frame, ImageSize
+from ..label.scalabel_typing import Category, Config, Frame, ImageSize
 from ..label.utils import get_leaf_categories, get_parent_categories
 from .result import AVERAGE, Result, Scores, ScoresList
 from .utils import filter_labels, reorder_preds

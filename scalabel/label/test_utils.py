@@ -3,7 +3,7 @@ from typing import List, Optional
 
 import pytest
 
-from .typing import Frame, FrameGroup
+from .scalabel_typing import Frame, FrameGroup
 
 
 def compare_results(result: List[Frame], result_compare: List[Frame]) -> None:

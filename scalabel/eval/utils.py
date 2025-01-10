@@ -12,7 +12,7 @@ from scalabel.common.logger import logger
 from scalabel.common.parallel import NPROC
 from scalabel.common.typing import NDArrayI32, NDArrayU8
 from scalabel.label.transforms import mask_to_rle, poly2ds_to_mask, rle_to_mask
-from scalabel.label.typing import (
+from scalabel.scalabel.label.scalabel_typing import (
     RLE,
     Category,
     Config,

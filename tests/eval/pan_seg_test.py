@@ -3,7 +3,7 @@ import os
 import unittest
 
 from scalabel.label.io import load, load_label_config
-from scalabel.label.typing import Category
+from scalabel.scalabel.label.scalabel_typing import Category
 
 from scalabel.eval.pan_seg import PQStat, evaluate_pan_seg
 

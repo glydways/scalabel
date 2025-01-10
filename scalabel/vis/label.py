@@ -22,7 +22,7 @@ from ..common.logger import logger
 from ..common.parallel import NPROC
 from ..common.typing import NDArrayF64, NDArrayU8
 from ..label.transforms import rle_to_mask
-from ..label.typing import Config, Edge, Frame, Intrinsics, Label, Node
+from ..label.scalabel_typing import Config, Edge, Frame, Intrinsics, Label, Node
 from ..label.utils import (
     check_crowd,
     check_ignored,

@@ -11,7 +11,7 @@ from ..common.io import open_write_text
 from ..common.parallel import NPROC
 from ..common.typing import DictStrAny, NDArrayF64
 from .io import load
-from .typing import Dataset
+from .scalabel_typing import Dataset
 
 try:
     from nuscenes import NuScenes

@@ -12,7 +12,7 @@ from PIL import Image
 
 from ..common.logger import logger
 from ..common.typing import NDArrayF64, NDArrayU8
-from ..label.typing import Edge, Frame, Intrinsics, Label, Node
+from ..label.scalabel_typing import Edge, Frame, Intrinsics, Label, Node
 from ..label.utils import get_matrix_from_intrinsics
 from .geometry import Label3d
 
