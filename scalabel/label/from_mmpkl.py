@@ -114,14 +114,14 @@ def parse_arguments() -> argparse.Namespace:
 
     parser.add_argument(
         "--metric",
-        default="FN",
-        choices=["TP", "FP", "FN", "max_aos"],
+        default=None,
+        choices=["TP", "FP", "FN", "max_aos", None],
         help="Sorting criteria beased on the number of TP(True Positive), FP(False Positive), FN(False Negative), and max_aos(maximum orientation error)"
     )
     parser.add_argument(
         "--order",
-        default="DESC",
-        choices=["ASC","DESC"],
+        default=None,
+        choices=["ASC","DESC", None],
         help="Sorting order, descending(DESC) or ascending(ASC)"
     )
     parser.add_argument(
@@ -367,6 +367,9 @@ def get_and_sort_labels_of_interests(
 ) -> list:
     """Function to sort the labels based on a criteria defined by class_difficulty, IoU and the number of FP, TP and FN"""
 
+    if (metric is None and order is None):
+        return labels
+
     class_name_map = {"Glydcar": 0}
     class_difficulty_map = {"Easy":0, "Moderate":1, "Difficult":2}
     criteria = (class_name_map[class_name], class_difficulty_map[class_difficulty], str(iou))
@@ -395,6 +398,9 @@ def from_mmpkl_det(
     limit_num:int
 ) -> Dataset:
     """Function converting Glyd MMDetection pkl data to Scalabel format."""
+
+    if (metric is None and order is None):
+        print("No sorting or filtering applied. Visualizing all samples.")
     frames, groups = [], []
 
     velodyne_dir = osp.join(data_dir, "velodyne")
