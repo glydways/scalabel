@@ -1,4 +1,4 @@
-Note: This repo is now archived and will be read-only
+Note: This repo is now archived and will be read-only.
 Please use the following repo moving forward
 https://github.com/glydways/ext-scalabel 
 
