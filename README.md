@@ -1,3 +1,9 @@
+Note: This repo is now archived and will be read-only
+Please use the following repo moving forward
+https://github.com/glydways/ext-scalabel 
+
+See PER-164 for details
+
 ### Visualizing KITTI formatted labels and point cloud to Scalabel with ext-Complex-YOLOv4-Pytorch repo
 
 ## Step 1. Setup Docker 
